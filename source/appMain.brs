@@ -10,13 +10,14 @@ Sub Main()
     initTheme()
 
     'prepare the screen for display and get ready to begin
-    screen=preShowHomeScreen("Register", "")
-    if screen=invalid then
-        print "unexpected error in preShowHomeScreen"
-        return
-    end if
+    ' screen=preShowHomeScreen("Register", "")
+    ' if screen=invalid then
+    ' '    print "unexpected error in preShowHomeScreen"
+    ' '    return
+    ' end if
 
-    showHomeScreen(screen)
+    ' showHomeScreen(screen)
+    doRegistration()
 
 End Sub
 

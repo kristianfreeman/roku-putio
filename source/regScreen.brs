@@ -21,14 +21,15 @@ Function doRegistration() As Integer
    'Failure case: getRegResult_failure (always returns failure)
    'Success case: getRegResult_success (always returns success)
 
-    m.UrlBase         = "http://rokudev.roku.com/rokudev/examples/register"
-    m.UrlGetRegCode   = m.UrlBase + "/getRegCode"
-    m.UrlGetRegResult = m.UrlBase + "/getRegResult"
-    m.UrlWebSite      = "www.myrokuputiostuff.com/roku"
+    m.UrlBase         = "http://shotput.tv/api/roku"
+    m.UrlGetRegCode   = m.UrlBase + "/register"
+    m.UrlGetRegResult = m.UrlBase + "/register"
+
+    m.UrlWebSite      = "http://shotput.tv/activate"
 
     m.RegToken = loadRegistrationToken()
     if isLinked() then
-        print "device already linked, skipping registration process" 
+        print "device already linked, skipping registration process"
         'return 0
     endif
 
@@ -36,22 +37,22 @@ Function doRegistration() As Integer
 
     'main loop get a new registration code, display it and check to see if its been linked
     while true
-        
+
         duration = 0
 
-        sn = GetDeviceESN() + "foobar"
+        sn = GetDeviceESN()
         regCode = getRegistrationCode(sn)
 
         'if we've failed to get the registration code, bail out, otherwise we'll
-        'get rid of the retreiving... text and replace it with the real code       
+        'get rid of the retreiving... text and replace it with the real code
         if regCode = "" then return 2
         regscreen.SetRegistrationCode(regCode)
         print "Enter registration code " + regCode + " at " + m.UrlWebSite + " for " + sn
 
         'make an http request to see if the device has been registered on the backend
         while true
-            sleep(5000) ' to simulate going to computer and typing in regcode
-                
+            sleep(10000) ' to simulate going to computer and typing in regcode
+
             status = checkRegistrationStatus(sn, regCode)
             if status < 3 return status
 
@@ -60,7 +61,7 @@ Function doRegistration() As Integer
             retryDuration = getRetryDuration()
             print "retry duration "; itostr(duration); " at ";  itostr(retryInterval);
             print " sec intervals for "; itostr(retryDuration); " secs max"
-          
+
             'wait for the retry interval to expire or the user to press a button
             'indicating they either want to quit or fetch a new registration code
             while true
@@ -84,7 +85,7 @@ Function doRegistration() As Integer
                     endif
                 endif
             end while
-            
+
             if duration > retryDuration exit while
             if getNewCode exit while
 
@@ -98,7 +99,7 @@ End Function
 '********************************************************************
 '** display the registration screen in its initial state with the
 '** text "retreiving..." shown.  We'll get the code and replace it
-'** in the next step after we have something onscreen for teh user 
+'** in the next step after we have something onscreen for teh user
 '********************************************************************
 Function displayRegistrationScreen() As Object
 
@@ -115,7 +116,6 @@ Function displayRegistrationScreen() As Object
     regscreen.SetRegistrationCode("retrieving code...")
     regscreen.AddParagraph("This screen will automatically update as soon as your activation completes")
     regscreen.AddButton(0, "Get a new code")
-    regscreen.AddButton(1, "Back")
     regscreen.Show()
 
     return regscreen
@@ -141,6 +141,10 @@ Function getRegistrationCode(sn As String) As String
     print "GOT: " + rsp
     print "Reason: " + http.Http.GetFailureReason()
 
+    print "data starting"
+    print xml
+    print xml.Parse(rsp)
+
     if not xml.Parse(rsp) then
         print "Can't parse getRegistrationCode response"
         ShowConnectionFailed()
@@ -164,7 +168,7 @@ Function getRegistrationCode(sn As String) As String
     retryDuration = 900 'seconds (aka 15 minutes)
     regCode       = ""
 
-    'handle validation of response fields 
+    'handle validation of response fields
     for each e in xml.GetBody()
         if e.GetName() = "regCode" then
             regCode = e.GetBody()  'enter this code at website
@@ -244,7 +248,7 @@ Function checkRegistrationStatus(sn As String, regCode As String) As Integer
         endif
     end while
 
-    print "result: " + validstr(regToken) +  " for " + validstr(customerId) + " at " + validstr(creationTime) 
+    print "result: " + validstr(regToken) +  " for " + validstr(customerId) + " at " + validstr(creationTime)
 
     return 3
 
@@ -254,7 +258,7 @@ End Function
 '***************************************************************
 ' The retryInterval is used to control how often we retry and
 ' check for registration success. its generally sent by the
-' service and if this hasn't been done, we just return defaults 
+' service and if this hasn't been done, we just return defaults
 '***************************************************************
 Function getRetryInterval() As Integer
     if m.retryInterval < 1 then m.retryInterval = 30
@@ -263,9 +267,9 @@ End Function
 
 
 '**************************************************************
-' The retryDuration is used to control how long we attempt to 
+' The retryDuration is used to control how long we attempt to
 ' retry. this value is generally obtained from the service
-' if this hasn't yet been done, we just return the defaults 
+' if this hasn't yet been done, we just return the defaults
 '**************************************************************
 Function getRetryDuration() As Integer
     if m.retryDuration < 1 then m.retryDuration = 900
@@ -280,7 +284,7 @@ End Function
 Function loadRegistrationToken() As dynamic
     m.RegToken =  RegRead("RegToken", "Authentication")
     if m.RegToken = invalid then m.RegToken = ""
-    return m.RegToken 
+    return m.RegToken
 End Function
 
 Sub saveRegistrationToken(token As String)
@@ -317,9 +321,17 @@ Sub showCongratulationsScreen()
         if type(msg) = "roParagraphScreenEvent"
             if msg.isScreenClosed()
                 print "Screen closed"
-                exit while                
+                exit while
             else if msg.isButtonPressed()
                 print "Button pressed: "; msg.GetIndex(); " " msg.GetData()
+
+                screen=preShowHomeScreen("Register", "")
+                if screen=invalid then
+                   print "unexpected error in preShowHomeScreen"
+                   return
+                end if
+                showHomeScreen(screen)
+
                 exit while
             else
                 print "Unknown event: "; msg.GetType(); " msg: "; msg.GetMessage()
@@ -328,4 +340,3 @@ Sub showCongratulationsScreen()
         endif
     end while
 End Sub
-
